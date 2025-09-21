@@ -29,3 +29,12 @@ app:
     expire-minutes: ${JWT_EXPIRE_MINUTES:120}
   # 允许的前端域名（逗号分隔），用于 CORS 配置读取
   allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+
+  # 在 Render 上：用 H2 文件库（设置 PROFILE=render 即启用）
+  spring.config.activate.on-profile: render
+  spring:
+    datasource:
+      driver-class-name: org.h2.Driver
+      url: jdbc:h2:file:./data/app;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_UPPER=false
+      username: sa
+      password:
