@@ -1,0 +1,31 @@
+# application.yml  —— 本地有默认值；线上用环境变量覆盖
+server:
+  port: ${PORT:8080}   # Railway/Render 会注入 PORT；本地默认 8080
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 兼容 Railway 的 MYSQL* 环境变量；本地有默认值
+    url: jdbc:mysql://${MYSQLHOST:localhost}:${MYSQLPORT:3306}/${MYSQLDATABASE:bbs}?useSSL=false&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
+    username: ${MYSQLUSER:root}
+    password: ${MYSQLPASSWORD:1234}
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+
+# 自定义应用配置
+app:
+  jwt:
+    # 线上用环境变量覆盖：JWT_SECRET / JWT_EXPIRE_MINUTES
+    secret: ${JWT_SECRET:CHANGE_ME_TO_64+_RANDOM_CHARS_____________________________________}
+    expire-minutes: ${JWT_EXPIRE_MINUTES:120}
+  # 允许的前端域名（逗号分隔），用于 CORS 配置读取
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
