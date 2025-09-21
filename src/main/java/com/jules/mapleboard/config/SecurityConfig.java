@@ -51,53 +51,40 @@ public class SecurityConfig {
         return cfg.getAuthenticationManager();
     }
 
-    // ====== CORS (works for Swagger + local HTML) ======
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration cfg = new CorsConfiguration();
-        // In production, replace "*" with your actual frontend origin(s)
-        cfg.setAllowedOriginPatterns(List.of("*"));
-        cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
-        cfg.setAllowedHeaders(List.of("*"));
-        cfg.setAllowCredentials(false); // using Bearer tokens, not cookies
-        UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
-        src.registerCorsConfiguration("/**", cfg);
-        return src;
-    }
+//    // ====== CORS (works for Swagger + local HTML) ======
+//    @Bean
+//    public CorsConfigurationSource corsConfigurationSource() {
+//        CorsConfiguration cfg = new CorsConfiguration();
+//        // In production, replace "*" with your actual frontend origin(s)
+//        cfg.setAllowedOriginPatterns(List.of("*"));
+//        cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","PATCH","OPTIONS"));
+//        cfg.setAllowedHeaders(List.of("*"));
+//        cfg.setAllowCredentials(false); // using Bearer tokens, not cookies
+//        UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();
+//        src.registerCorsConfiguration("/**", cfg);
+//        return src;
+//    }
 
     // ====== Main filter chain ======
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http,
+                                           CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
-                .cors(c -> c.configurationSource(corsConfigurationSource()))
+                .cors(c -> c.configurationSource(corsConfigurationSource))  // 用 CorsConfig 里的那份 Bean
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
                 .authorizeHttpRequests(auth -> auth
-                        // Swagger & docs
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-
-                        // Auth endpoints are public (register, login, logout)
                         .requestMatchers("/api/auth/**").permitAll()
-
-                        // Preflight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // Public read: anyone can view posts and comments
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
-
                         .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
-
-                        // Everything else requires authentication
                         .anyRequest().authenticated()
                 )
-
-                // Stateless logout endpoint (client should drop its token)
                 .logout(logout -> logout
                         .logoutUrl("/api/auth/logout")
                         .logoutSuccessHandler((req, res, auth) -> res.setStatus(204))
                 )
-
                 .authenticationProvider(authProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
