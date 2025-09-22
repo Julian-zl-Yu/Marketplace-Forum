@@ -70,24 +70,39 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http,
                                            CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
-                .cors(c -> c.configurationSource(corsConfigurationSource))  // 用 CorsConfig 里的那份 Bean
+                .cors(c -> c.configurationSource(corsConfigurationSource))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // 根路径与常见静态/错误页
+                        .requestMatchers("/", "/index.html", "/error", "/favicon.ico", "/assets/**", "/static/**").permitAll()
+
+                        // Swagger 文档
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
+                        // 认证端点（注册/登录）
                         .requestMatchers("/api/auth/**").permitAll()
+
+                        // 预检请求
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 公共读取
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/comments/**").permitAll()
+
+                        // 其它均需认证
                         .anyRequest().authenticated()
                 )
-                .logout(logout -> logout
-                        .logoutUrl("/api/auth/logout")
-                        .logoutSuccessHandler((req, res, auth) -> res.setStatus(204))
+                .exceptionHandling(ex -> ex
+                        // 未登录访问受保护端点 → 401（更利于排错，不要默认 403）
+                        .authenticationEntryPoint((req, res, e) -> res.setStatus(401))
+                        // 已登录但无权限 → 403
+                        .accessDeniedHandler((req, res, e) -> res.setStatus(403))
                 )
                 .authenticationProvider(authProvider())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
+
 }

@@ -29,7 +29,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     /** Skip login/register, Swagger, error page, and CORS preflight */
     @Override
-    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+    protected boolean shouldNotFilter(HttpServletRequest request) {
         String p = request.getServletPath();
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) return true;
         return p.startsWith("/api/auth/")
@@ -39,13 +39,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request,
-                                    @NonNull HttpServletResponse response,
-                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
-
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
         String authHeader = request.getHeader("Authorization");
-
-        // No Bearer header → don't block; let permitAll/anonymous work.
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
@@ -54,22 +51,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
 
         try {
-            // parseUsername() will validate signature & expiration; throws JwtException if invalid
+            // 用你的 JwtUtil 解析用户名（同时会校验签名/过期；无效会抛异常）
             String username = jwtUtil.parseUsername(token);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails user = userDetailsService.loadUserByUsername(username);
-
-                var auth = new UsernamePasswordAuthenticationToken(
-                        user, null, user.getAuthorities());
+                var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
-        } catch (JwtException ignored) {
-            // Invalid/expired token → DO NOT 401/403 here; just continue.
-            // Protected endpoints will still be denied by Security rules; public ones will work.
+        } catch (Exception ignored) {
+            // 注意：这里不要 sendError(401/403)；让后续的授权规则决定
         }
 
         filterChain.doFilter(request, response);
     }
+
 }
