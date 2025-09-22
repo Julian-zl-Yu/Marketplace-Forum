@@ -1,14 +1,18 @@
-# application.yml —— 本地默认用 MySQL；线上用环境变量覆盖
+# ========== 默认：本地 / 通用环境（直连你自己的 MySQL） ==========
 server:
   port: ${PORT:8080}   # Render/其他平台会注入 PORT，本地默认 8080
 
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    # 兼容云平台提供的 MYSQL* 环境变量；本地默认指向 localhost
+    # 本地默认连 localhost；也兼容云平台提供的 MYSQL* 环境变量
     url: jdbc:mysql://${MYSQLHOST:localhost}:${MYSQLPORT:3306}/${MYSQLDATABASE:bbs}?useSSL=false&allowPublicKeyRetrieval=true&useUnicode=true&characterEncoding=utf8&serverTimezone=UTC
     username: ${MYSQLUSER:root}
     password: ${MYSQLPASSWORD:1234}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    open-in-view: false
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -30,30 +34,37 @@ app:
   # 允许的前端域名（逗号分隔），被 CorsConfig 读取
   allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
 
----
-# ===== Render 专用分节：启用 render profile 时，切换到 H2 文件库 =====
-spring:
-  config:
-    activate:
-      on-profile: render
-  datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:file:./data/app;DB_CLOSE_DELAY=-1;MODE=MySQL;DATABASE_TO_UPPER=false
-    username: sa
-    password:
-  # 如启用了 Flyway 且没有 H2 脚本，先关闭，避免启动报 "no such table"
-  flyway:
-    enabled: false
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema-mysql.sql
-      encoding: UTF-8
-
-
 logging:
   level:
     org.springframework.security: DEBUG
 
+---
+# ========== 线上：Cloud SQL + Auth Proxy（激活 cloudsql profile） ==========
+spring:
+  config:
+    activate:
+      on-profile: cloudsql
 
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # 通过 cloud-sql-proxy 连接本机 3306
+    # 优先使用 DB_*；若未设置则回落到你原先的 MYSQL* 变量
+    url: jdbc:mysql://127.0.0.1:3306/${DB_NAME:${MYSQLDATABASE:bbs}}?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&allowPublicKeyRetrieval=true&useSSL=false
+    username: ${DB_USER:${MYSQLUSER:root}}
+    password: ${DB_PASS:${MYSQLPASSWORD:1234}}
+    hikari:
+      maximum-pool-size: 5   # Cloud SQL 连接数别开太大，先保守
 
+  jpa:
+    open-in-view: false
+
+# 如你在本项目里启用了 Flyway 且暂时没有脚本，可先关闭避免报错
+flyway:
+  enabled: ${FLYWAY_ENABLED:false}
+
+# 如需启动时初始化表结构（可选）
+sql:
+  init:
+    mode: ${SQL_INIT_MODE:never}   # 需要时可设为 always
+    schema-locations: classpath:schema-mysql.sql
+    encoding: UTF-8
