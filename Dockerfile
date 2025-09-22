@@ -22,7 +22,7 @@ RUN printf '%s\n' \
 '#!/usr/bin/env bash' \
 'set -euo pipefail' \
 'echo "$GCP_SA_KEY_JSON" > /tmp/gcp-key.json' \
-'/usr/local/bin/cloud-sql-proxy "$INSTANCE_CONNECTION_NAME"=tcp:127.0.0.1:3306 --credentials-file=/tmp/gcp-key.json --health-check & sleep 2' \
+'/usr/local/bin/cloud-sql-proxy --credentials-file=/tmp/gcp-key.json --address 127.0.0.1 --port 3306 "$INSTANCE_CONNECTION_NAME" & sleep 2' \
 'echo "Starting Spring Boot..."' \
 'exec java ${JAVA_OPTS:-} -jar /app/app.jar' \
 > /app/entrypoint.sh \
