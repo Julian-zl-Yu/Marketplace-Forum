@@ -1,11 +1,12 @@
-FROM eclipse-temurin:17-jdk AS build
-WORKDIR /app
-COPY . .
-RUN ./mvnw -DskipTests clean package
+FROM eclipse-temurin:21-jre
 
-FROM eclipse-temurin:17-jre
+# 下载 Cloud SQL Proxy v2（Linux amd64）
+ADD https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.12.0/cloud-sql-proxy.linux.amd64 /usr/local/bin/cloud-sql-proxy
+RUN chmod +x /usr/local/bin/cloud-sql-proxy
+
 WORKDIR /app
-ENV PORT=8080
-EXPOSE 8080
-COPY --from=build /app/target/*.jar app.jar
-CMD ["sh", "-c", "java -Dserver.port=${PORT} -Dspring.profiles.active=render -jar app.jar"]
+# 这里的 app.jar 替换成你构建出来的 jar 名称
+COPY target/app.jar /app/app.jar
+
+# 启动命令交给 Render 的 Start Command 覆盖
+CMD ["sh", "-c", "java -jar /app/app.jar"]
