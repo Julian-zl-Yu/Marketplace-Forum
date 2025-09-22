@@ -44,3 +44,8 @@ spring:
   # 如启用了 Flyway 且没有 H2 脚本，先关闭，避免启动报 "no such table"
   flyway:
     enabled: false
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+
