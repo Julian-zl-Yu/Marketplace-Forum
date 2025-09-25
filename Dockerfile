@@ -1,5 +1,4 @@
 # ---------- Stage 1: Build ----------
-# 不再用 Docker Hub，改用 mcr.microsoft.com
 FROM mcr.microsoft.com/openjdk/jdk:17-ubuntu AS build
 
 # 安装 maven
@@ -9,16 +8,17 @@ RUN apt-get update \
 
 WORKDIR /build
 
-# 先拉依赖
+# 先拷 pom.xml 预拉依赖
 COPY pom.xml .
 RUN mvn -q -B -DskipTests dependency:go-offline
 
-# 再拷源码打包
+# 再拷源码并打包
 COPY src ./src
 RUN mvn -q -B -DskipTests package
 
 # ---------- Stage 2: Runtime ----------
-FROM mcr.microsoft.com/openjdk/jre:17-ubuntu
+# 注意：这里也用 jdk:17-ubuntu（没有 jre 标签）
+FROM mcr.microsoft.com/openjdk/jdk:17-ubuntu
 
 # 工具
 RUN apt-get update \
